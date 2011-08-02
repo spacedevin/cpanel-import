@@ -1,4 +1,5 @@
-*Cpanel account importer*
+Cpanel account importer
+=======================
 
 The purpose of this script is to import cpanel backups into a system that uses no cpanel
 
