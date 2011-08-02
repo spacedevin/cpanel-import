@@ -26,7 +26,7 @@ $config->source = '/home/devin/backups/';
 $config->file = $config->source.$config->user.'.tar.gz';
 $config->dest = '/home/';
 $config->groupname = $argv[4] ? $argv[4] : 'web';
-$config->mysqlAuth = $argv[5] ? ' -u '.$argv[5].' -p'.$argv[6].' ' : ' -u root -proot';
+$config->mysqlAuth = $argv[5] ? ' -u '.$argv[5].' -p'.$argv[6].' ' : ' -u root';
 $config->ignoreFiles = array(
 	'mail',
 	'public_ftp',
@@ -39,7 +39,11 @@ $config->ignoreFiles = array(
 	'.lastlogin',
 	'.htpasswds',
 	'.cpanel',
-	'etc'
+	'etc',
+	'.ftpquota',
+	'.autorespond',
+	'.filter',
+	'.spamkey'
 );
 
 $config->http = '/etc/httpd/';
@@ -64,7 +68,8 @@ if (!file_exists($config->file)) {
 
 // create the user and give it a password
 exec('groupadd '.$config->groupname);
-exec('useradd '.$config->user.' -p '.$argv[2].' -g '.$config->groupname);
+exec('useradd '.$config->user.' -g '.$config->groupname);
+exec('echo '.$argv[2].' | passwd '.$config->user.' --stdin');
 
 
 // create the directory for working with
