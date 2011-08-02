@@ -15,14 +15,34 @@
  *   creationg of log directories
  *   creation of mysql dbs and users
  */
+ 
+error_reporting(E_ALL ^ E_NOTICE);
+ini_set('display_errors',true);
+set_time_limit(0);
 
 $config = new stdClass;
 $config->user = $argv[1];
 $config->source = '/home/devin/backups/';
+$config->source = '/Users/arzynik/Sites/daily/';
 $config->file = $config->source.$config->user.'.tar.gz';
 $config->dest = '/home/';
+$config->dest = '/Users/arzynik/Sites/daily/_home/';
 $config->groupname = $argv[4] ? $argv[4] : 'web';
 $config->mysqlAuth = $argv[5] ? ' -u '.$argv[5].' -p'.$argv[6].' ' : ' -u root -proot';
+$config->ignoreFiles = array(
+	'mail',
+	'public_ftp',
+	'cpbackup.*',
+	'backup.*',
+	'access-logs',
+	'tmp',
+	'logs',
+	'www',
+	'.lastlogin',
+	'.htpasswds',
+	'.cpanel',
+	'etc'
+);
 
 $config->http = '/etc/httpd/';
 
@@ -57,7 +77,6 @@ exec('mkdir '.$config->source.$config->user);
 // create the user directory
 exec('rm -Rf '.$config->dest.$config->user);
 exec('mkdir '.$config->dest.$config->user);
-exec('mkdir '.$config->dest.$config->user.'/www');
 exec('mkdir '.$config->dest.$config->user.'/logs');
 
 
@@ -71,9 +90,26 @@ $config->extracted = exec('cd '.$config->source.$config->user.'/*/ && pwd').'/';
 
 
 // move all web files
-exec('mv '.$config->extracted.'homedir/public_html/* '.$config->dest.$config->user.'/www/');
-@exec('mv '.$config->extracted.'homedir/.git '.$config->dest.$config->user);
-@exec('mv '.$config->extracted.'homedir/.gitconfig '.$config->dest.$config->user);
+$iterator = new DirectoryIterator($config->extracted.'homedir');
+foreach ($iterator as $fileinfo) {
+	if ($fileinfo->isDot()) {
+		continue;
+	}
+	$copy = true;
+	foreach ($config->ignoreFiles as $ignore) {
+		if (preg_match('/'.$ignore.'/',trim($fileinfo->getFilename()))) {
+			$copy = false;
+		}
+	}
+	if ($copy) {
+		echo 'Copying: '.$config->extracted.'homedir/'.$fileinfo->getFilename()."\n";
+		exec('mv '.$config->extracted.'homedir/'.$fileinfo->getFilename().' '.$config->dest.$config->user.'/');
+	}
+}
+
+
+// rename public_html to www because its shorter and i hate public_html
+exec('mv '.$config->dest.$config->user.'/public_html/ '.$config->dest.$config->user.'/www/');
 
 
 // set up the host template
