@@ -18,11 +18,11 @@
 
 $config = new stdClass;
 $config->user = $argv[1];
-$config->source = '/Users/arzynik/Sites/daily/';
+$config->source = '/home/devin/backups/';
 $config->file = $config->source.$config->user.'.tar.gz';
 $config->dest = '/home/';
 $config->groupname = $argv[4] ? $argv[4] : 'web';
-$config->mysqlAuth = $argv[5] ? ' -u '.$argv[5].' -p'.$argv[6].' ' : ' -u root -proot ';
+$config->mysqlAuth = $argv[5] ? ' -u '.$argv[5].' -p'.$argv[6].' ' : ' -u root -proot';
 
 $config->http = '/etc/httpd/';
 
@@ -45,8 +45,8 @@ if (!file_exists($config->file)) {
 }
 
 // create the user and give it a password
-exec('useradd '.$config->user.' -p '.$argv[2].' -g '.$config->groupname);
 exec('groupadd '.$config->groupname);
+exec('useradd '.$config->user.' -p '.$argv[2].' -g '.$config->groupname);
 
 
 // create the directory for working with
@@ -144,4 +144,4 @@ exec('rm -Rf '.$config->source.$config->user);
 
 
 // restart apache
-//exec('/etc/init.d/httpd restart');
+exec('/etc/init.d/httpd restart');
