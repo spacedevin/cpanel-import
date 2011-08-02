@@ -26,7 +26,7 @@ $config->source = '/home/devin/backups/';
 $config->file = $config->source.$config->user.'.tar.gz';
 $config->dest = '/home/';
 $config->groupname = $argv[4] ? $argv[4] : 'web';
-$config->mysqlAuth = $argv[5] ? ' -u '.$argv[5].' -p'.$argv[6].' ' : ' -u root -proot';
+$config->mysqlAuth = $argv[5] ? ' -u '.$argv[5].' -p'.$argv[6].' ' : ' -u root';
 $config->ignoreFiles = array(
 	'mail',
 	'public_ftp',
@@ -39,7 +39,15 @@ $config->ignoreFiles = array(
 	'.lastlogin',
 	'.htpasswds',
 	'.cpanel',
-	'etc'
+	'etc',
+	'.ftpquota',
+	'.autorespond',
+	'.filter',
+	'.spamkey',
+	'.lang',
+	'cpmove.psql',
+	'.cpaddons',
+	'account-locked.tpl'
 );
 
 $config->http = '/etc/httpd/';
@@ -51,6 +59,8 @@ $config->hostTemplate = '
 	DocumentRoot /home/_USER_/www
 	ServerAdmin webmaster@_DOMAIN_
 	UseCanonicalName Off
+	ErrorLog /home/_USER_/logs/error_log
+	CustomLog /home/_USER_/logs/access_log combined
 </VirtualHost>
 ';
 
@@ -64,7 +74,8 @@ if (!file_exists($config->file)) {
 
 // create the user and give it a password
 exec('groupadd '.$config->groupname);
-exec('useradd '.$config->user.' -p '.$argv[2].' -g '.$config->groupname);
+exec('useradd '.$config->user.' -g '.$config->groupname);
+exec('echo '.$argv[2].' | passwd '.$config->user.' --stdin');
 
 
 // create the directory for working with
@@ -165,13 +176,16 @@ function sql_write($sql, $dbname = '') {
 
 sql_write("CREATE USER '".$config->user."'@'localhost' IDENTIFIED BY '".$argv[2]."';\n");
 
-foreach ($databases as $database) {
-	$sql = "CREATE DATABASE `".$database->name."`;\n";
-	$sql .= "GRANT ALL PRIVILEGES ON *.".$database->name." TO '".$config->user."'@'localhost';\n";
-	sql_write($sql,$database->name);
-	exec('mysql'.$config->mysqlAuth.' "'.$database->name.'" < "'.$config->extracted.'mysql/'.$database->file.'"');
+if ($databases) {
+	foreach ($databases as $database) {
+		$sql = "CREATE DATABASE `".$database->name."`;\n";
+		$sql .= "GRANT ALL ON `".$database->name."`.* TO '".$config->user."'@'localhost';\n";
+		sql_write($sql,$database->name);
+		exec('mysql'.$config->mysqlAuth.' "'.$database->name.'" < "'.$config->extracted.'mysql/'.$database->file.'"');
+	}
+} else {
+	echo "no databases.\n";
 }
-
 
 // remove extracted files
 exec('rm -Rf '.$config->source.$config->user);
