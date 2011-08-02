@@ -1,7 +1,7 @@
 Cpanel account importer
 =======================
 
-The purpose of this script is to import cpanel backups into a system that uses no cpanel
+The purpose of this script is to import cpanel backups into a system that uses no cpanel. Run this script from root.
 
 	usage: script.php username password [domainname] [groupname] [mysqluser] [mysqlpass]
 
