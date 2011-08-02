@@ -5,6 +5,7 @@ The purpose of this script is to import cpanel backups into a system that uses n
 	usage: script.php username password [domainname] [groupname] [mysqluser] [mysqlpass]
 
 this script currently only supports:
+
 * creation of users and assigning to a group
 
 * creation of apache2 host file and symlinking it to active
