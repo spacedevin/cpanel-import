@@ -23,10 +23,8 @@ set_time_limit(0);
 $config = new stdClass;
 $config->user = $argv[1];
 $config->source = '/home/devin/backups/';
-$config->source = '/Users/arzynik/Sites/daily/';
 $config->file = $config->source.$config->user.'.tar.gz';
 $config->dest = '/home/';
-$config->dest = '/Users/arzynik/Sites/daily/_home/';
 $config->groupname = $argv[4] ? $argv[4] : 'web';
 $config->mysqlAuth = $argv[5] ? ' -u '.$argv[5].' -p'.$argv[6].' ' : ' -u root -proot';
 $config->ignoreFiles = array(
