@@ -3,7 +3,7 @@ Cpanel account importer
 
 The purpose of this script is to import cpanel backups into a system that uses no cpanel. Run this script from root.
 
-	usage: script.php username password [domainname] [groupname] [mysqluser] [mysqlpass]
+	usage: cpanel-import.php username password [domainname] [groupname] [ip]
 
 this script currently only supports:
 
@@ -11,7 +11,7 @@ this script currently only supports:
 
 * creation of apache2 host file and symlinking it to active
 
-* moving of all publi_html files
+* moving of all homedir files
 
 * creationg of log directories
 
