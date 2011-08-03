@@ -6,12 +6,12 @@
  *
  * The purpose of this script is to import cpanel backups into a system that uses no cpanel
  *
- * usage: script.php username password [domainname] [groupname] [mysqluser] [mysqlpass]
+ * usage: cpanel-import.php username password [domainname] [groupname] [ip]
  *
  * this script currently only supports:
- *   creation of users and assigning to a grou
+ *   creation of users and assigning to a group
  *   creation of apache2 host file and symlinking it to active
- *   moving of all publi_html files
+ *   moving of all homedir files
  *   creationg of log directories
  *   creation of mysql dbs and users
  */
@@ -19,14 +19,48 @@
 error_reporting(E_ALL ^ E_NOTICE);
 ini_set('display_errors',true);
 set_time_limit(0);
-
 $config = new stdClass;
-$config->user = $argv[1];
+
+
+/*
+ * edit this config to properly use this script
+ */
+
+// the source of where the backups are stored. backups need to be named like: USER.tar.gz
 $config->source = '/home/devin/backups/';
-$config->file = $config->source.$config->user.'.tar.gz';
+// the path to your apache files. usually httpd or apache2
+$config->http = '/etc/httpd/';
+// where you want your users created
 $config->dest = '/home/';
+// your mysql username that has grant and create db permissions. probably root
+$config->mysqlUser = 'root';
+// your mysql password
+$config->mysqlPass = null;
+
+
+/*
+ * you probably wont need to edit anything below this line
+ */
+ 
+// this template is created for apache in the sites-available path. edit this template if you want some suexec or something
+$config->hostTemplate = '
+<VirtualHost '.($config->ip ? $config->ip.':80' : '*').'>
+	ServerName _DOMAIN_
+	ServerAlias *._DOMAIN_ _DOMAINS_
+	DocumentRoot /home/_USER_/www
+	ServerAdmin webmaster@_DOMAIN_
+	UseCanonicalName Off
+	ErrorLog /home/_USER_/logs/error_log
+	CustomLog /home/_USER_/logs/access_log combined
+</VirtualHost>
+';
+// optional: if you want a different format of file name
+$config->file = $config->source.$config->user.'.tar.gz';
+// the groupname. you can pass this in arguments
 $config->groupname = $argv[4] ? $argv[4] : 'web';
-$config->mysqlAuth = $argv[5] ? ' -u '.$argv[5].' -p'.$argv[6].' ' : ' -u root';
+// the ip to bind to. you can pass this in arguments
+$config->ip = $argv[5] ? $argv[5] : null;
+// the files to NOT copy over form the homedir
 $config->ignoreFiles = array(
 	'mail',
 	'public_ftp',
@@ -47,30 +81,23 @@ $config->ignoreFiles = array(
 	'.lang',
 	'cpmove.psql',
 	'.cpaddons',
-	'account-locked.tpl'
+	'account-locked.tpl',
+	'.bash_history'
 );
+// you can add a prefix or something to the user if you would like
+$config->user = $argv[1];
+// the command to auth. probably wont need to edit this
+$config->mysqlAuth = ' -u '.$config->mysqlUser.($config->mysqlPass ? ' -p '.$config->mysqlPass .' ' : '');
 
-$config->http = '/etc/httpd/';
-
-$config->hostTemplate = '
-<VirtualHost *>
-	ServerName _DOMAIN_
-	ServerAlias *._DOMAIN_ _DOMAINS_
-	DocumentRoot /home/_USER_/www
-	ServerAdmin webmaster@_DOMAIN_
-	UseCanonicalName Off
-	ErrorLog /home/_USER_/logs/error_log
-	CustomLog /home/_USER_/logs/access_log combined
-</VirtualHost>
-';
 
 if (!$config->user) {
-	die('usage: script.php username password [domainname] [groupname]');
+	die('usage: cpanel-import.php username password [domainname] [groupname] [ip]');
 }
 
 if (!file_exists($config->file)) {
 	die('file "'.$config->file.'" does not exist.');
 }
+
 
 // create the user and give it a password
 exec('groupadd '.$config->groupname);
@@ -186,6 +213,7 @@ if ($databases) {
 } else {
 	echo "no databases.\n";
 }
+
 
 // remove extracted files
 exec('rm -Rf '.$config->source.$config->user);
