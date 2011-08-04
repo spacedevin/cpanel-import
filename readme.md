@@ -21,7 +21,7 @@ Usage
 	Usage: cpanel-import.php file [options]
 	Ex: cpanel-import.php devin.tar.gz --ip=100.100.100.100 --forceuser
 
-**--user** - Import as a different username.
+**--username** - Import as a different username.
 
 **--password** - Overwrite the users password.
 
