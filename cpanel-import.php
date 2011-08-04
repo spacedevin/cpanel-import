@@ -48,11 +48,11 @@ class CpanelImport {
 		$this->user = new CpanelImport_User($this);
 		$this->user->create();
 		
-		$this->user = new CpanelImport_Vhost($this);
-		$this->user->write();
+		$this->vhost = new CpanelImport_Vhost($this);
+		$this->vhost->write();
 		
-		$this->user = new CpanelImport_Mysql($this);
-		$this->user->create();
+		$this->mysql = new CpanelImport_Mysql($this);
+		$this->mysql->create();
 		
 		$this->files->move();
 		//$this->files->remove();
@@ -62,14 +62,20 @@ class CpanelImport {
 	}
 	
 	public static function exec($cmd) {
-		//if ($this->config->debug) {
+		if (defined('CPI_DEBUG')) {
 			echo "Running command:\n".$cmd."\n\n";
-		//∂}
+		}
 		return exec($cmd);
 	}
 	
+	public static function message($message) {
+		if (defined('CPI_VERBOSE')) {
+			echo $message."\n";
+		}
+	}
+	
 	public function usage() {
-		echo 'fuck you';
+		echo "fuck you\n\n";
 	}
 }
 
@@ -135,6 +141,8 @@ class CpanelImport_Config {
 	public $ip;
 	public $filename;
 	public $debug = false;
+	public $forceuser = false;
+	public $verbose = false;
 	
 	public function loadArgs($args) {
 		$args = $this->parseArgs($args);
@@ -144,17 +152,28 @@ class CpanelImport_Config {
 		
 		$this->filename = array_shift($args);
 		foreach ($args as $key => $value) {
-			if (property_exists($this,$key)) {
+
 				switch ($key) {
-					case 'p':
 					case 'pasword':
 						$this->password = $value;
 						break;
+					case 'ip':
+						$this->ip = $value;
+						break;
 					case 'debug':
+						define('CPI_DEBUG',true);
 						$this->debug = true;
 						break;
+					case 'v':
+					case 'verbose':
+						define('CPI_VERBOSE',true);
+						$this->verbose = true;
+						break;
+					case 'forceuser':
+						$this->forceuser = true;
+						break;
 				}
-			}
+
 		}
 	
 	}
@@ -182,7 +201,7 @@ class CpanelImport_Group {
 	}
 
 	public function create() {
-		CpanelImport::exec('groupadd '.$this->import->config->groupname);
+		CpanelImport::exec('groupadd '.$this->groupname);
 	}
 }
 
@@ -199,6 +218,9 @@ class CpanelImport_User {
 		$this->password = $this->import->config->password;
 		$this->shadow = trim(file_get_contents($this->import->files->extracted.'shadow'));
 		$this->username = $this->import->config->username ? $this->import->config->username : $this->cpanelUsername;
+		if (!$this->import->config->forceuser && $this->check()) {
+			throw new CpanelImport_Exception('The user "'.$this->username.'" alerady exists!');
+		}
 	}
 	
 	public function create() {
@@ -208,6 +230,10 @@ class CpanelImport_User {
 		} else {
 			CpanelImport::exec('awk -F: \'/'.$this->username.'/ { OFS=":"; $2="'.$this->shadow.'"; print}\' /etc/shadow');
 		}
+	}
+	
+	public function check() {
+		return strpos(CpanelImport::exec('id '.$this->username),'No such user') ? false : true;
 	}
 }
 
@@ -234,9 +260,17 @@ class CpanelImport_Files {
 	
 	public function move() {
 		// create the user directory
-		CpanelImport::exec('rm -Rf '.$this->import->config->dest.$this->import->config->user);
-		CpanelImport::exec('mkdir '.$this->import->config->dest.$this->import->config->user);
-		CpanelImport::exec('mkdir '.$this->import->config->dest.$this->import->config->user.'/logs');
+
+		if (!$this->import->user->username) {
+			throw new CpanelImport_Exception('There is no username!');
+		}
+		if ($this->import->config->forceuser) {
+			CpanelImport::exec('rm -Rf '.$this->import->config->dest.$this->import->user->username);
+		} else {
+			throw new CpanelImport_Exception('The directory "'.$this->import->config->dest.$this->import->user->username.'" alredy exists!');
+		}
+		CpanelImport::exec('mkdir '.$this->import->config->dest.$this->import->user->username);
+		CpanelImport::exec('mkdir '.$this->import->config->dest.$this->import->user->username.'/logs');
 		
 		// move all web files
 		$iterator = new DirectoryIterator($this->extracted.'homedir');
@@ -251,13 +285,13 @@ class CpanelImport_Files {
 				}
 			}
 			if ($copy) {
-				echo 'Copying: '.$this->extracted.'homedir/'.$fileinfo->getFilename()."\n";
+				CpanelImport::message('Copying: '.$this->extracted.'homedir/'.$fileinfo->getFilename());
 				CpanelImport::exec('mv '.$this->extracted.'homedir/'.$fileinfo->getFilename().' '.$this->import->config->dest.$this->import->user->username.'/');
 			}
 		}
 
 		// rename public_html to www because its shorter and i hate public_html
-		CpanelImport::exec('mv '.$this->import->config->dest.$this->import->user->username.'/public_html/ '.$this->import->config->dest.$this->import->config->user.'/www/');
+		CpanelImport::exec('mv '.$this->import->config->dest.$this->import->user->username.'/public_html/ '.$this->import->config->dest.$this->import->user->username.'/www/');
 
 		// change permissions
 		CpanelImport::exec('chown -R '.$this->import->user->username.':'.$this->import->group->groupname.' '.$this->import->config->dest.$this->import->user->username);
@@ -277,10 +311,11 @@ class CpanelImport_Vhost {
 
 	public function __construct($import) {
 		$this->import = $import;
+		$this->read();
 	}
 	
 	public function read() {
-		$domains = file($this->import->files->extracted.'cp/'.$this->import->config->user);
+		$domains = file($this->import->files->extracted.'cp/'.$this->import->user->username);
 		foreach ($domains as $line) {
 			if (preg_match('/^DNS([0-9]+)?=.*$/',$line)) {
 				$doms[] = trim(preg_replace('/^DNS([0-9]+)?=(.*)$/','\\2',$line));
@@ -291,6 +326,7 @@ class CpanelImport_Vhost {
 	}
 	
 	public function write() {
+		CpanelImport::message("Writing vhosts ...");
 		$find = array(
 			'/_IP_/',
 			'/_USER_/',
@@ -331,13 +367,14 @@ class CpanelImport_Mysql {
 			}
 		}
 		
-		//$this->sqlWrite("CREATE USER '".$this->import->config->user."'@'localhost' IDENTIFIED BY '".$argv[2]."';\n");
+		//$this->sqlWrite("CREATE USER '".$this->import->user->username."'@'localhost' IDENTIFIED BY '".$argv[2]."';\n");
 		
 		if ($databases) {
+			CpanelImport::message("Creating databases ...");
 			$sql = '';
 			foreach ($databases as $database) {
 				$sql .= "CREATE DATABASE `".$database->name."`;\n";
-				//$sql .= "GRANT ALL ON `".$database->name."`.* TO '".$this->import->config->user."'@'localhost';\n";
+				//$sql .= "GRANT ALL ON `".$database->name."`.* TO '".$this->import->user->username."'@'localhost';\n";
 			}
 			$this->sqlWrite($sql);
 			$sql = file_get_contents($this->import->files->extracted.'mysql.sql');
@@ -350,7 +387,7 @@ class CpanelImport_Mysql {
 				CpanelImport::exec('mysql'.$this->import->config->mysqlAuth.' "'.$database->name.'" < "'.$this->import->files->extracted.'mysql/'.$database->file.'"');
 			}
 		} else {
-			echo "no databases.\n";
+			CpanelImport::message("No databases to create.");
 		}
 	}
 
