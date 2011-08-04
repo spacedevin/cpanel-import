@@ -55,7 +55,7 @@ class CpanelImport {
 		$this->mysql->create();
 		
 		$this->files->move();
-		//$this->files->remove();
+		$this->files->remove();
 
 		// restart apache
 		CpanelImport::exec('/etc/init.d/httpd restart');
@@ -75,7 +75,21 @@ class CpanelImport {
 	}
 	
 	public function usage() {
-		echo "fuck you\n\n";
+		echo "Cpanel account importer\n\n"
+			."Usage: cpanel-import.php file [options]\n"
+			."Ex: cpanel-import.php devin.tar.gz --ip=100.100.100.100 --forceuser\n\n"
+			."  --user\t\tImport as a different username.\n"
+			."  --password\t\tOverwrite the users password.\n"
+			."  --ip\t\t\tThe IP to bind the vhost to.\n"
+			."  --mysql-user\t\tThe root or super admin for mysql.\n"
+			."  --mysql-pass\t\tThe root or super admin password for mysql.\n"
+			."  --source\t\tWhere to find the file.\n"
+			."  --dest\t\tWhere to find put the user.\n"
+			."  --ignore\t\tComma separate list of files to ignore in homedir.\n"
+			."  --httpd\t\tApache path.\n"
+			."  --debug\t\tShow commands.\n"
+			."  --verbose\t\tShow additional info.\n"
+			."  --forceuser\t\tIf the user exists, keep going, and delete their home directory.\n\n";
 	}
 }
 
@@ -154,8 +168,29 @@ class CpanelImport_Config {
 		foreach ($args as $key => $value) {
 
 				switch ($key) {
-					case 'pasword':
+					case 'password':
 						$this->password = $value;
+						break;
+					case 'httpd':
+						$this->httpd = $value;
+						break;
+					case 'source':
+						$this->source = $value;
+						break;
+					case 'dest':
+						$this->dest = $value;
+						break;
+					case 'username':
+						$this->username = $value;
+						break;
+					case 'mysql-pass':
+						$this->mysqlPass = $value;
+						break;
+					case 'mysql-user':
+						$this->mysqlUser = $value;
+						break;
+					case 'ignore':
+						$this->ignoreFiles = explode(',',$value);
 						break;
 					case 'ip':
 						$this->ip = $value;
@@ -164,7 +199,6 @@ class CpanelImport_Config {
 						define('CPI_DEBUG',true);
 						$this->debug = true;
 						break;
-					case 'v':
 					case 'verbose':
 						define('CPI_VERBOSE',true);
 						$this->verbose = true;
@@ -300,6 +334,7 @@ class CpanelImport_Files {
 
 	public function remove() {
 		// remove extracted files
+		CpanelImport::message("Removing temp files ...");
 		CpanelImport::exec('rm -Rf '.$this->import->config->source.$this->basename);
 	}
 }
