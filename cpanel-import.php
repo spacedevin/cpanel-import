@@ -78,7 +78,7 @@ class CpanelImport {
 		echo "Cpanel account importer\n\n"
 			."Usage: cpanel-import.php file [options]\n"
 			."Ex: cpanel-import.php devin.tar.gz --ip=100.100.100.100 --forceuser\n\n"
-			."  --user\t\tImport as a different username.\n"
+			."  --username\t\tImport as a different username.\n"
 			."  --password\t\tOverwrite the users password.\n"
 			."  --ip\t\t\tThe IP to bind the vhost to.\n"
 			."  --mysql-user\t\tThe root or super admin for mysql.\n"
@@ -146,7 +146,12 @@ class CpanelImport_Config {
 		'cpmove.psql',
 		'.cpaddons',
 		'account-locked.tpl',
-		'.bash_history'
+		'.bash_history',
+		'cpanel3-skel',
+		'.trash',
+		'.spamassassinenable',
+		'.spamassassin',
+		'.whmtheme'
 	);
 	
 	//default values;
